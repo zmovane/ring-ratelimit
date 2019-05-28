@@ -1,5 +1,5 @@
-(ns core.ratelimit
-  (:require [core.backend :as backend]
+(ns middleware.ratelimit.core
+  (:require [middleware.ratelimit.backend :as backend]
             [clojure.string :as str])
   (:import (java.util.concurrent TimeUnit)))
 

@@ -1,4 +1,4 @@
-(ns core.backend
+(ns middleware.ratelimit.backend
   (:require [taoensso.carmine :as car]))
 
 (defprotocol Backend
