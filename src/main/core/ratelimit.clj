@@ -1,19 +1,24 @@
 (ns core.ratelimit
+  (:require [core.backend :as backend]
+            [clojure.string :as str])
   (:import (java.util.concurrent TimeUnit)))
 
-(def buckets (atom {}))
-
-(defn wrap-ratelimit [handler & {:keys [interval interval-time-unit limit key-in-request whitelist fail-response]
+(defn wrap-ratelimit [handler & {:keys [interval interval-time-unit limit key-in-request whitelist fail-response backend path-limit?]
                                  :or   {key-in-request [:remote-addr]
                                         whitelist      []
-                                        fail-response  "Too Many Requests"}}]
+                                        fail-response  "Too Many Requests"
+                                        backend        (backend/local-atom-backend)
+                                        path-limit?    false}}]
   (fn [req respond raise]
     (let [bucket-key (get-in req key-in-request)]
       (if (.contains whitelist bucket-key)
         (handler req respond raise)
-        (let [bucket-key        [bucket-key (get-in req [:headers "upgrade"] "http")]
+        (let [bucket-key        (let [scheme (get-in req [:headers "upgrade"] "http")
+                                      path   (get req :uri "")
+                                      frags  [bucket-key scheme]]
+                                  (str/join ":" (if path-limit? (conj frags path) frags)))
               tokens-per-millis (/ limit (.toMillis interval-time-unit interval))
-              bucket            (get-in @buckets bucket-key)
+              bucket            (backend/get-bucket backend bucket-key)
               now               (System/currentTimeMillis)
               last              (:timestamp bucket)
               remaining         (-> (if (some? bucket)
@@ -39,7 +44,7 @@
                    (update resp :headers)
                    respond))
             (do
-              (swap! buckets assoc-in bucket-key {:timestamp now :remaining (dec remaining)})
+              (backend/update-bucket backend bucket-key {:timestamp now :remaining (dec remaining)})
               (let [headers-fn #(merge % rl-headers)
                     respond-fn #(respond (update % :headers headers-fn))]
                 (handler req respond-fn raise)))))))))

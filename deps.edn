@@ -1,1 +1,2 @@
-{:paths ["src/main/clojure" "src/main/resources"]}
+{:paths ["src/main/clojure" "src/main/resources"]
+ :deps  {com.taoensso/carmine {:mvn/version "2.19.1"}}}
