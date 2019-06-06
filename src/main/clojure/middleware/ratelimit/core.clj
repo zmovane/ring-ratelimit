@@ -3,14 +3,14 @@
             [clojure.string :as str])
   (:import (java.util.concurrent TimeUnit)))
 
-(defn wrap-ratelimit [handler & {:keys [interval interval-time-unit limit key-in-request whitelist fail-response backend path-limit?]
-                                 :or   {key-in-request [:remote-addr]
-                                        whitelist      []
-                                        fail-response  "Too Many Requests"
-                                        backend        (backend/local-atom-backend)
-                                        path-limit?    false}}]
+(defn wrap-ratelimit [handler & {:keys [interval interval-time-unit limit select-key-fn whitelist fail-response backend path-limit?]
+                                 :or   {select-key-fn #(:remote-addr %)
+                                        whitelist     []
+                                        fail-response "Too Many Requests"
+                                        backend       (backend/local-atom-backend)
+                                        path-limit?   false}}]
   (fn [req respond raise]
-    (let [bucket-key (get-in req key-in-request)]
+    (let [bucket-key (select-key-fn req)]
       (if (.contains whitelist bucket-key)
         (handler req respond raise)
         (let [bucket-key        (let [scheme (get-in req [:headers "upgrade"] "http")
