@@ -10,9 +10,8 @@
                                         backend       (backend/local-atom-backend)
                                         path-limit?   false}}]
   (fn [req respond raise]
-    (let [bucket-key (select-key-fn req)]
-      (if (.contains whitelist bucket-key)
-        (handler req respond raise)
+    (if-let [bucket-key (select-key-fn req)]
+      (if-not (.contains whitelist bucket-key)
         (let [bucket-key        (let [scheme (get-in req [:headers "upgrade"] "http")
                                       path   (get req :uri "")
                                       frags  [bucket-key scheme]]
@@ -47,4 +46,6 @@
               (backend/update-bucket backend bucket-key {:timestamp now :remaining (dec remaining)})
               (let [headers-fn #(merge % rl-headers)
                     respond-fn #(respond (update % :headers headers-fn))]
-                (handler req respond-fn raise)))))))))
+                (handler req respond-fn raise)))))
+        (handler req respond raise))
+      (handler req respond raise))))
