@@ -37,11 +37,8 @@
                                  :x-ratelimit-remaining (int remaining)
                                  :x-ratelimit-reset     (+ (quot now 1000) retry-after)}]
           (if over-limit?
-            (let [resp       {:status 429 :body fail-response}
-                  rl-headers (assoc rl-headers :retry-after retry-after)]
-              (->> #(merge % rl-headers)
-                   (update resp :headers)
-                   respond))
+            (let [rl-headers (assoc rl-headers :retry-after retry-after)]
+              (respond {:status 429 :body fail-response :headers rl-headers}))
             (do
               (backend/update-bucket backend bucket-key {:timestamp now :remaining (dec remaining)})
               (let [headers-fn #(merge % rl-headers)
